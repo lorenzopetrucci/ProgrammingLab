@@ -98,7 +98,7 @@ print(daily_stats(time_series))
 print(time_series)
 #print(len(time_series))
 
-a = [1, 5, 7, 2]
+#a = [1, 5, 7, 2]
 #b = []
-print(daily_stats(a))        
+#print(daily_stats(a))        
 
