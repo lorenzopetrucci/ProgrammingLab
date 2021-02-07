@@ -1,104 +1,141 @@
 class ExamException(Exception):
     pass
 
+# Classe ispirata a quella fatta a lezione
 class CSVTimeSeriesFile:
     
     def __init__(self, name):
+        
         self.name = name
         
     def get_data(self):
         
         values = []
         
-        try:
-            my_file = open(self.name, 'r')
-        except: 
-            raise ExamException('Impossibile aprire il file')
+        # Controllo che il valore in input sia una stringa per evitare un 
+        # eventuale int che verrebbe accettato come parametro a open()
+        if isinstance(self.name, str):
+            
+            try:
+                my_file = open(self.name, 'r')
+            except: 
+                raise ExamException('Impossibile aprire il file')
+        
+        else:
+            raise ExamException('Il parametro passato non è una stringa')
 
         for line in my_file:
             
             elements = line.split(',')
-                            
+            
+            # Per ogni riga provo a convertire l'elemento prima della prima 
+            # virgola in int e quello dopo in float, altrimenti salto la riga
             try:
                 epoch = int(elements[0])
                 temperature = float(elements[1])
-                
             except:
                 continue
             
-            values.append([epoch, temperature])
+            # Controllo che il secondo valore (la temperatura) sia superiore
+            # allo zero assoluto e in caso positivo lo aggiungo alla lista  
+            if temperature > -273.15:
+                values.append([epoch, temperature])
         
         my_file.close()
 
         return(values)
+
+# Assegno all'argomento della funzione il valore None in modo che una chiamata 
+# della funzione senza parametri venga comunque accettata ed intercettata nei
+# controlli sucessivi
+def daily_stats(time_series = None):
     
-def daily_stats(time_series):
-    
+    # Controllo che la variabile passata sia una lista con almeno due colonne
     try:
         time_series[0][0]
     except:
-        raise ExamException('La lista deve avere almeno due colonne di valori')
+        raise ExamException('L\'argomento della funzione dev\'essere una lista con almeno due colonne')
     
+    # Non posso escludere a priori un epoch negativo. Nel caso tale valore sia in 
+    # mezzo alla lista viene poi intercettato come 'Timestamp fuori ordine', ma nel
+    # caso questo sia il primo valore della serie controllo che anche l'ultimo valore
+    # sia negativo, in caso contrario significa che i valori coprono un periodo come 
+    # minimo a cavallo tra due mesi, e quindi contrari alle specifiche date
     if (time_series[len(time_series) - 1][0] * time_series[0][0] < 0):
         raise ExamException('La lista contiene valori antecedenti e successivi al 01/01/1970')
-    
-    #if (time_series[len(time_series) - 1][0] - time_series[0][0] > 2629744):
-        #raise ExamException('La lista contiene valori superiori al mese')
 
+    # Variabile per le statistiche giornaliere
     daily_stats = []
+    
+    # Variabile per le temperature di ogni giornata
     values = []
     
+    # Variabile per capire se sono nello stesso giorno, 
+    # inizializzata al primo epoch della lista
     current_day = time_series[0][0] // 86400
-    current_hour = (time_series[0][0] % 86400) - 1
+    # Variabile per controllare in che momento della giornata mi
+    # trovo, inizializzata al primo epoch - 1, in modo che il primo
+    # valore della serie non venga considerato come un duplicato
+    current_moment = time_series[0][0] - 1
+    
+    # Statistiche giornaliere
     max_value = time_series[0][1]
     min_value = time_series[0][1]
-    average = time_series[0][1]
     
+    # Ciclo su ogni elemento della lista
     for element in time_series:
         
-        if (element[0] // 86400) == current_day:
-            
-            if (element[0] % 86400) <= current_hour:
+        # Controllo che il giorno dell'elemento non sia
+        # inferiore a quello dell'elemento precedente
+        if (element[0] // 86400) < current_day:
+            raise ExamException('Timestamp fuori ordine')
+        
+        # Caso in cui il giorno sia uguale
+        elif (element[0] // 86400) == current_day:
+                                   
+            # Controllo che l'ordine degli epoch dello stesso
+            # giorno sia crescente
+            if element[0] <= current_moment:
                 raise ExamException('Timestamp fuori ordine')
             
+            
+            # Aggiungo la temperatura alla lista
             values.append(element[1])
             
+            # Se il valore in esame è superiore o inferiore a 
+            # massimo o minimo attuali sostituisco i loro valori
             if max_value < element[1]:
                 max_value = element[1]
                 
-            elif min_value > element[1]:
+            if min_value > element[1]:
                 min_value = element[1]
-                
-            current_hour = element[0] % 86400
-                
-        elif (element[0] // 86400) < current_day:
-            raise ExamException('Timestamp fuori ordine')
             
+            # Aggiorno il valore di controllo con 
+            # quello dell'epoch attuale
+            current_moment = element[0]
+        
+        # Caso in cui passo al giorno successivo
         else:
+            # Faccio la media dei valori del giorno appena concluso
             average = sum(values) / len(values)
-
+            
+            # Aggiungo le tre statistiche alla lista
             daily_stats.append([min_value, max_value, average])
             
+            # Aggiorno il giorno ed il momento dei 
+            # controlli a quelli attuali
             current_day = element[0] // 86400
-            current_hour = element[0] % 86400
+            current_moment = element[0]
+            
+            # Aggiungo la prima temperatura del nuovo giorno alla
+            # lista e lo faccio diventare il nuovo massimo e minimo
             values = [element[1]]
             max_value = element[1]
             min_value = element[1]
-            average = element[1]
-            
-    average = sum(values) / len(values)
     
+    # Faccio la media e aggiungo le statistiche anche dell'ultima 
+    # giornata controllata
+    average = sum(values) / len(values)
     daily_stats.append([min_value, max_value, average])
     
     return(daily_stats)
-        
-time_series_file = CSVTimeSeriesFile('data.csv')
-time_series = time_series_file.get_data()
-print(daily_stats(time_series))
-print(time_series)
-#print(len(time_series))
-
-#a = [1, 5, 7, 2]
-#b = []
-#print(daily_stats(a))        
-
