@@ -40,6 +40,18 @@ class CSVTimeSeriesFile:
             # allo zero assoluto e in caso positivo lo aggiungo alla lista  
             if temperature > -273.15:
                 values.append([epoch, temperature])
+                
+            # Controllo epoch duplicati o fuori ordine
+            check_value = None
+            for value in values:
+                
+                if check_value is None:
+                    check_value = value[0]
+                else:
+                    if value[0] <= check_value:
+                        raise ExamException('Timestamp duplicato o fuori ordine')
+                
+                check_value = value[0]
         
         my_file.close()
 
@@ -73,10 +85,6 @@ def daily_stats(time_series = None):
     # Variabile per capire se sono nello stesso giorno, 
     # inizializzata al primo epoch della lista
     current_day = time_series[0][0] // 86400
-    # Variabile per controllare in che momento della giornata mi
-    # trovo, inizializzata al primo epoch - 1, in modo che il primo
-    # valore della serie non venga considerato come un duplicato
-    current_moment = time_series[0][0] - 1
     
     # Statistiche giornaliere
     max_value = time_series[0][1]
@@ -85,20 +93,9 @@ def daily_stats(time_series = None):
     # Ciclo su ogni elemento della lista
     for element in time_series:
         
-        # Controllo che il giorno dell'elemento non sia
-        # inferiore a quello dell'elemento precedente
-        if (element[0] // 86400) < current_day:
-            raise ExamException('Timestamp fuori ordine')
-        
         # Caso in cui il giorno sia uguale
-        elif (element[0] // 86400) == current_day:
+        if (element[0] // 86400) == current_day:
                                    
-            # Controllo che l'ordine degli epoch dello stesso
-            # giorno sia crescente
-            if element[0] <= current_moment:
-                raise ExamException('Timestamp fuori ordine')
-            
-            
             # Aggiungo la temperatura alla lista
             values.append(element[1])
             
@@ -109,10 +106,6 @@ def daily_stats(time_series = None):
                 
             if min_value > element[1]:
                 min_value = element[1]
-            
-            # Aggiorno il valore di controllo con 
-            # quello dell'epoch attuale
-            current_moment = element[0]
         
         # Caso in cui passo al giorno successivo
         else:
@@ -125,7 +118,6 @@ def daily_stats(time_series = None):
             # Aggiorno il giorno ed il momento dei 
             # controlli a quelli attuali
             current_day = element[0] // 86400
-            current_moment = element[0]
             
             # Aggiungo la prima temperatura del nuovo giorno alla
             # lista e lo faccio diventare il nuovo massimo e minimo
@@ -139,6 +131,3 @@ def daily_stats(time_series = None):
     daily_stats.append([min_value, max_value, average])
     
     return(daily_stats)
-
-x = CSVTimeSeriesFile('test_1')
-print(x.get_data())
