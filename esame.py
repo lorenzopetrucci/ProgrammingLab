@@ -31,7 +31,7 @@ class CSVTimeSeriesFile:
             # Per ogni riga provo a convertire l'elemento prima della prima 
             # virgola in int e quello dopo in float, altrimenti salto la riga
             try:
-                epoch = int(elements[0])
+                epoch = int(float(elements[0]))
                 temperature = float(elements[1])
             except:
                 continue
@@ -139,3 +139,6 @@ def daily_stats(time_series = None):
     daily_stats.append([min_value, max_value, average])
     
     return(daily_stats)
+
+x = CSVTimeSeriesFile('test_1')
+print(x.get_data())
